@@ -39,7 +39,6 @@ jobs:
         with:
           allowUpdates: true
           artifacts: ${{ env.output }}
-          token: ${{ secrets.ACTION_TOKEN }}
           tag: ${{ env.short_sha }}
           prerelease: true
 
@@ -68,6 +67,5 @@ jobs:
         with:
           allowUpdates: true
           artifacts: "wenku8x-${{ env.short_sha }}-*-release.apk"
-          token: ${{ secrets.ACTION_TOKEN }}
           tag: ${{ env.short_sha }}
           prerelease: true
