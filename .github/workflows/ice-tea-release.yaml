@@ -1,0 +1,73 @@
+name: release
+run-name: ${{ github.actor }} is releasing this software
+
+on:
+  workflow_dispatch:
+    inputs:
+      logLevel:
+        description: 'Log level'
+        required: true
+        default: 'warning'
+        type: choice
+        options:
+          - info
+          - warning
+          - debug
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+      - run: echo "output=wenku8x-${{ env.short_sha }}-linux.tar.gz" >> $GITHUB_ENV
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update -y && sudo apt-get upgrade -y;
+          sudo apt-get install -y curl unzip xz-utils zip libglu1-mesa clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - run: flutter --version
+      - run: flutter pub get
+      - run: flutter build linux
+      - name: Package
+        run: tar -zcvf ${{ env.output }} -C build/linux/x64/release/bundle .
+      - name: Release
+        uses: ncipollo/release-action@v1
+        with:
+          allowUpdates: true
+          artifacts: ${{ env.output }}
+          token: ${{ secrets.ACTION_TOKEN }}
+          tag: ${{ env.short_sha }}
+          prerelease: true
+
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+      - run: echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - run: flutter --version
+      - run: flutter pub get
+      - run: flutter build apk --split-per-abi
+      - run: |
+          cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk .
+          mv app-arm64-v8a-release.apk wenku8x-${{ env.short_sha }}-arm64-v8a-release.apk
+      - name: Release
+        uses: ncipollo/release-action@v1
+        with:
+          allowUpdates: true
+          artifacts: "wenku8x-${{ env.short_sha }}-*-release.apk"
+          token: ${{ secrets.ACTION_TOKEN }}
+          tag: ${{ env.short_sha }}
+          prerelease: true
